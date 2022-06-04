@@ -1,37 +1,90 @@
 import cv2
 import numpy as np
 from BoundingBoxesExtractor import BoundingBoxesExtractor
-import box_drawer as bdraw
+from BoundingBox import BoundingBox
+import drawing_utils
+import features
 import copy
 
 alpha = 1.2 # Simple contrast control
 beta = 20   # Simple brightness control
 
 
+def main():
+    images = ['6.jpg', '7.png', '11.jpg', 'lot2.jpg', 'lot3.jpg', 'lot5.jpg']
+    for image in images:
+        process(image)
+    # process('6.jpg')
+
+
+def process(image: str):
+    prefix = 'images/'
+    color_image = cv2.imread(prefix + image)
+    hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+    thresholded = threshold(hsv)
+    binary_image = thresholded
+    binary_image = closed(thresholded)
+    bounding_boxes_builder = BoundingBoxesExtractor(binary_image, binary_image.shape[0], binary_image.shape[1])
+
+    bounding_boxes = bounding_boxes_builder.get_bounding_boxes()
+    valid_boxes = []
+    for idx, box in enumerate(bounding_boxes):
+        if 2.5 <= box.get_aspect_ratio() <= 3.2 and box.get_box_area() > 300:
+            image_path = 'boxes/VALID{}{}.png'.format(image, idx)
+            cutbox = cut_box(binary_image, box)
+            # cv2.imwrite(image_path, cutbox)
+            if features.is_lot_logo(cutbox, image_path):
+                valid_boxes.append(box)
+
+    out_path = 'output/{}'.format(image)
+    drawing_utils.draw_bounding_boxes(color_image, valid_boxes)
+    cv2.imwrite(out_path, color_image)
+    # cv2.imshow('image', color_image)
+
+
+def cut_box(img: np.ndarray, box: BoundingBox):
+    return img[box.y_min:box.y_max, box.x_min:box.x_max]
+
 def new_main():
-    resized_img = cv2.imread('temp.jpg')
-    bounding_boxes_builder = BoundingBoxesExtractor()
-    bounding_boxes_builder.builder(resized_img.shape[0], resized_img.shape[1])
-    bounding_boxes_builder.append(resized_img, 255)
 
-    print('All images input for BBB')
-    boxes_built = bounding_boxes_builder.build()
-    print(len(boxes_built))
-    print(boxes_built[0].to_string())
-    image = bdraw.draw_boxes(copy.copy(resized_img), boxes_built)
-    cv2.imshow('image', image)
-    # cv2.imwrite('4_segmented/' + str(image_number) + '.jpg', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-def print_hi(name):
-    img = cv2.imread('images/11.jpg')
-    img = cv2.GaussianBlur(img, (5, 5), 0)
+    img = cv2.imread('images/7.png')
+    blurred = cv2.GaussianBlur(img, (5, 5), 0)
     # img = resize(img)
     # white_balanced = white_balance(img)
     # cv2.imshow('white_balanced', white_balanced)
     # blurred = cv2.blur(white_balanced, (3, 3))
 
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+    thresholded = threshold(hsv)
+    close(thresholded)
+    color_image = img
+    binary_image = thresholded
+    bounding_boxes_builder = BoundingBoxesExtractor(binary_image, binary_image.shape[0], binary_image.shape[1])
+
+    bounding_boxes = bounding_boxes_builder.get_bounding_boxes()
+    print(len(bounding_boxes))
+    print(bounding_boxes[0].to_string())
+    valid_boxes = []
+    for box in bounding_boxes:
+        print(box.get_aspect_ratio())
+        if 2.5 <= box.get_aspect_ratio() <= 3.2:
+            valid_boxes.append(box)
+
+    print(valid_boxes)
+    drawing_utils.draw_bounding_boxes(color_image, bounding_boxes)
+    cv2.imshow('image', color_image)
+    # cv2.imwrite('4_segmented/' + str(image_number) + '.jpg', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+def print_hi(name):
+    img = cv2.imread('images/lot5.jpg')
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+    # img = resize(img)
+    # white_balanced = white_balance(img)
+    # cv2.imshow('white_balanced', white_balanced)
+    # blurred = cv2.blur(white_balanced, (3, 3))
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     thresholded = threshold(hsv)
     close(thresholded)
@@ -61,6 +114,15 @@ def close(img):
     # closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
     cv2.imshow('closed', closing)
     cv2.imwrite('temp.jpg', closing)
+
+
+def closed(img):
+    kernel5 = np.ones((3, 3), np.uint8)
+    kernel7 = np.ones((7, 7), np.uint8)
+    closing = cv2.erode(img, kernel5)
+    closing = cv2.dilate(closing, kernel7)
+    return closing
+
 
 def white_balance(img):
     result = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
@@ -103,4 +165,5 @@ def resize(img: str):
 
 
 if __name__ == '__main__':
-    new_main()
+    # new_main()
+    main()
