@@ -20,9 +20,10 @@ def process(image: str):
     bgr_image = cv2.imread(input_images_path + image)
     hsv_image = color_utils.bgr2hsv(bgr_image)
     thresholded_image = img_proc.threshold(hsv_image)
-    closed_image = img_proc.close(thresholded_image, 5, 3)
+    cv2.imwrite('intermediate/thresholded/{}'.format(image), thresholded_image)
 
-    cv2.imwrite('intermediate/thresholded/{}'.format(image), closed_image)
+    closed_image = img_proc.close(thresholded_image, 5, 3)
+    cv2.imwrite('intermediate/closed/{}'.format(image), closed_image)
 
     all_bounding_boxes = BoundingBoxesExtractor(closed_image).get_bounding_boxes()
     valid_bounding_boxes = filter_out_bounding_boxes(all_bounding_boxes, closed_image, image)
